@@ -128,6 +128,9 @@ func _is_point_inside_level(pos: Vector2, level: Node2D) -> bool:
 	
 	return rect.has_point(pos)
 
+func is_point_in_level(pos: Vector2) -> bool:
+	return _find_level_containing(pos) != null
+
 func _update_view_size():
 	view_size = get_viewport_rect().size
 

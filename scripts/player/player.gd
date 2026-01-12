@@ -111,8 +111,7 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 	movement_tween.tween_property(self, "position", target_pos, 0.4)
 	
 	movement_tween.tween_callback(func():
-		# Check if we landed on Safe Ground
-		# We check for collisions with the 'Wall/Water' layer at our feet.
+		# 1. Check if we landed on Water/Wall (Layer 2)
 		var space_state = get_world_2d().direct_space_state
 		var query = PhysicsPointQueryParameters2D.new()
 		query.position = global_position
@@ -122,9 +121,16 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 		
 		var results = space_state.intersect_point(query)
 		
-		if results.size() > 0:
-			# Landed on Water/Wall! Bounce back to safety.
-			print("Player landed on water, returning...")
+		# 2. Check if we landed in the Void (Outside Map)
+		var is_in_void = false
+		var camera = get_viewport().get_camera_2d()
+		if camera and camera.has_method("is_point_in_level"):
+			if not camera.is_point_in_level(global_position):
+				is_in_void = true
+		
+		# Trigger respawn if on Water OR in Void
+		if results.size() > 0 or is_in_void:
+			print("Player landed on hazard (Water/Void), returning...")
 			if movement_tween: movement_tween.kill()
 			movement_tween = create_tween()
 			movement_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
