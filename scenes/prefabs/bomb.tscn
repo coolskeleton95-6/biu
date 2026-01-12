@@ -5,4 +5,4 @@
 
 [node name="Bomb" instance=ExtResource("1_n8sua")]
 script = ExtResource("2_5gngf")
-blast_range = 3
+blast_range = 4
