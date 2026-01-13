@@ -10,13 +10,10 @@ extends Node2D
 
 @onready var ray: RayCast2D = $RayCast2D
 @onready var bomb_placer: Node2D = $BombPlacer 
+@onready var history_manager: Node = $HistoryManager # Ensure you add this Child Node!
 
 var is_moving: bool = false
 var input_buffer: Vector2 = Vector2.ZERO 
-
-# --- NEW: History Manager (Git-like Snapshots) ---
-var state_history: Array[Dictionary] = []
-const MAX_HISTORY = 50 
 
 var inputs: Dictionary = {
 	"ui_right": Vector2.RIGHT,
@@ -31,13 +28,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		if event.keycode == KEY_R:
 			reset_level()
 		elif event.keycode == KEY_BACKSPACE:
-			undo_last_action()
+			if history_manager:
+				history_manager.undo_last_action()
 
 	# MOVEMENT INPUTS
 	for dir in inputs.keys():
 		if event.is_action_pressed(dir):
 			# Record state before moving
-			record_snapshot()
+			if history_manager:
+				history_manager.record_snapshot()
 			attempt_move(inputs[dir])
 
 func reset_level() -> void:
@@ -109,82 +108,6 @@ func _on_move_finished() -> void:
 		input_buffer = Vector2.ZERO
 		# Note: Snapshot handled in _unhandled_input for next move
 		attempt_move(next_move)
-
-# ------------------------------------------------------------------------------
-# HISTORY MANAGER IMPL
-# ------------------------------------------------------------------------------
-
-func record_snapshot() -> void:
-	var snapshot = {
-		"player_pos": position,
-		"boxes": [],
-		"bombs": []
-	}
-	
-	# 1. Snapshot Persistent Boxes
-	# We iterate the "box" group, but skip bombs (which are also in group "box")
-	var boxes = get_tree().get_nodes_in_group("box")
-	for box in boxes:
-		# Check if this node is managed by bomb_placer (is a bomb)
-		if box in bomb_placer.active_bombs:
-			continue
-			
-		if box.has_method("get_snapshot"):
-			snapshot.boxes.append(box.get_snapshot())
-			
-	# 2. Snapshot Transient Bombs
-	# Bombs might be destroyed, so we store their DATA and respawn them on undo
-	for bomb in bomb_placer.active_bombs:
-		if is_instance_valid(bomb) and bomb.has_method("get_snapshot"):
-			snapshot.bombs.append(bomb.get_snapshot())
-			
-	state_history.append(snapshot)
-	if state_history.size() > MAX_HISTORY:
-		state_history.pop_front()
-
-func undo_last_action() -> void:
-	if is_moving or state_history.is_empty():
-		return
-		
-	var snapshot = state_history.pop_back()
-	restore_state(snapshot)
-
-func restore_state(snapshot: Dictionary) -> void:
-	# 1. Restore Player
-	position = snapshot.player_pos
-	
-	# 2. Restore Boxes
-	# Because boxes persist (they aren't destroyed/spawned like bombs),
-	# we can rely on the node reference stored in the snapshot.
-	for box_data in snapshot.boxes:
-		var box = box_data.node
-		if is_instance_valid(box) and box.has_method("restore_snapshot"):
-			box.restore_snapshot(box_data)
-			# Kill any active tweens on the box to stop movement immediately
-			var t = box.create_tween()
-			t.kill()
-			
-	# 3. Restore Bombs
-	# Bombs are complicated because they might have exploded (freed).
-	# Strategy: Delete ALL current bombs, then respawn from snapshot.
-	
-	# A. Cleanup current active bombs
-	# We copy the list because queue_free might not happen immediately
-	var current_bombs = bomb_placer.active_bombs.duplicate()
-	bomb_placer.active_bombs.clear()
-	
-	for bomb in current_bombs:
-		if is_instance_valid(bomb):
-			bomb.queue_free()
-			
-	# B. Respawn bombs from history
-	for bomb_data in snapshot.bombs:
-		# Spawn a fresh bomb at the saved position
-		var new_bomb = bomb_placer.spawn_bomb_at(bomb_data.pos)
-		
-		# Restore its internal state (Floating, Water info, etc)
-		if new_bomb.has_method("restore_snapshot"):
-			new_bomb.restore_snapshot(bomb_data)
 
 # Triggered by BombPlacer input
 func trigger_explosion_sequence() -> void:

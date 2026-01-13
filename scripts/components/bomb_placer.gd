@@ -14,20 +14,26 @@ func _ready() -> void:
 	add_child(ray)
 
 func _unhandled_input(event: InputEvent) -> void:
+	var player = get_parent()
+	if not player: return
+
 	if event is InputEventKey and event.pressed and not event.echo:
 		if event.keycode == KEY_Z:
 			# Record state before placing
 			if active_bombs.size() < max_bombs:
-				get_parent().record_snapshot()
+				if player.has_node("HistoryManager"):
+					player.get_node("HistoryManager").record_snapshot()
 				try_place_bomb()
 			else:
 				print("Bomb limit reached!")
 		
 		elif event.keycode == KEY_X:
 			# Record state before exploding
-			get_parent().record_snapshot()
-			if get_parent().has_method("trigger_explosion_sequence"):
-				get_parent().trigger_explosion_sequence()
+			if player.has_node("HistoryManager"):
+				player.get_node("HistoryManager").record_snapshot()
+				
+			if player.has_method("trigger_explosion_sequence"):
+				player.trigger_explosion_sequence()
 
 func update_direction(new_dir: Vector2) -> void:
 	facing_direction = new_dir
@@ -52,7 +58,6 @@ func try_place_bomb() -> void:
 func spawn_bomb() -> void:
 	var target_pos = global_position + (facing_direction * tile_size)
 	spawn_bomb_at(target_pos)
-	# Removed "register_bomb_placement" call as History Manager handles it now
 
 func spawn_bomb_at(pos: Vector2) -> Node:
 	var new_bomb = bomb_scene.instantiate()
@@ -68,8 +73,6 @@ func spawn_bomb_at(pos: Vector2) -> Node:
 	return new_bomb
 
 func actual_explode_logic() -> void:
-	# CHANGED: Removed clear_history() to allow undoing explosions
-	
 	for bomb in active_bombs:
 		if is_instance_valid(bomb) and bomb.has_method("explode"):
 			bomb.explode()

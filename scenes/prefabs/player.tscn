@@ -1,9 +1,10 @@
-[gd_scene load_steps=6 format=3 uid="uid://bff2w370b4ou8"]
+[gd_scene load_steps=7 format=3 uid="uid://bff2w370b4ou8"]
 
 [ext_resource type="Texture2D" uid="uid://t731mpyiiedy" path="res://textures/icon.svg" id="1_06qtw"]
 [ext_resource type="Script" uid="uid://haj74n5mlso3" path="res://scripts/player/player.gd" id="1_tou0u"]
 [ext_resource type="Script" uid="uid://dbastcsunn50a" path="res://scripts/components/bomb_placer.gd" id="3_n0leu"]
 [ext_resource type="PackedScene" uid="uid://dsklufy68d1l4" path="res://scenes/prefabs/bomb.tscn" id="4_8cdkg"]
+[ext_resource type="Script" uid="uid://ba1lq1rbj6ndk" path="res://scripts/components/history_manager.gd" id="5_56dyf"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_tou0u"]
 size = Vector2(16, 16)
@@ -23,3 +24,6 @@ shape = SubResource("RectangleShape2D_tou0u")
 [node name="BombPlacer" type="Node2D" parent="."]
 script = ExtResource("3_n0leu")
 bomb_scene = ExtResource("4_8cdkg")
+
+[node name="HistoryManager" type="Node" parent="."]
+script = ExtResource("5_56dyf")
