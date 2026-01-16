@@ -17,7 +17,6 @@ var input_buffer: Vector2 = Vector2.ZERO
 var movement_tween: Tween 
 var _target_pos: Vector2
 
-# NEW: Flags to track knockback state and deferred checkpoints
 var is_knockback_active: bool = false
 var has_pending_level_entry: bool = false
 
@@ -127,6 +126,9 @@ func move_player(target_pos: Vector2) -> void:
 	is_moving = true
 	_target_pos = target_pos 
 	
+	# TRIGGER JELLY ANIMATION
+	_animate_jelly(move_speed + 0.04)
+	
 	if movement_tween: movement_tween.kill()
 	movement_tween = create_tween()
 	movement_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -171,7 +173,7 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 		
 		var results = space_state.intersect_point(query)
 		
-		# [FIX START] Check results to see if we hit a REAL obstacle or just Water
+		# Check results to see if we hit a REAL obstacle or just Water
 		var hit_real_solid = false
 		for result in results:
 			var collider = result.collider
@@ -189,7 +191,6 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 		if hit_real_solid:
 			hit_obstacle = true
 			break
-		# [FIX END]
 		
 		valid_distance = i
 
@@ -208,12 +209,18 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 		# Clamp min duration to 0.05s to prevent instant teleporting
 		var crash_duration = max(0.05, 0.4 * ratio)
 		
+		# TRIGGER JELLY ANIMATION (Crash speed)
+		_animate_jelly(crash_duration)
+		
 		# Linear means constant velocity -> abrupt stop
 		movement_tween.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		movement_tween.tween_property(self, "position", target_pos, crash_duration)
 		
 	else:
 		# FRICTION: Smooth slow down (Air resistance)
+		# TRIGGER JELLY ANIMATION (Full duration)
+		_animate_jelly(0.4)
+		
 		movement_tween.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		movement_tween.tween_property(self, "position", target_pos, 0.4)
 	
@@ -259,11 +266,39 @@ func carried_by_box(target_pos: Vector2, duration: float) -> void:
 	is_moving = true
 	_target_pos = target_pos 
 	
+	# TRIGGER JELLY ANIMATION
+	_animate_jelly(duration)
+	
 	movement_tween = create_tween()
 	movement_tween.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 	movement_tween.tween_property(self, "global_position", target_pos, duration)
 	movement_tween.tween_callback(func(): is_moving = false)
 
+# ------------------------------------------------------------------------------
+# VISUALS (JELLY EFFECT)
+# ------------------------------------------------------------------------------
+func _animate_jelly(duration: float) -> void:
+	# NOTE: If your player sprite is a child node (e.g. "Sprite"), 
+	# replace 'self' with '$Sprite' to avoid scaling collision shapes excessively.
+	# Since movement logic disables collision checks while moving, scaling 'self' is mostly safe.
+	
+	var t = create_tween()
+	
+	# 1. Stretch (Start of move)
+	t.tween_property(self, "scale", Vector2(0.8, 1.2), duration * 0.3)\
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	
+	# 2. Squash (Landing/Impact)
+	t.tween_property(self, "scale", Vector2(1.2, 0.8), duration * 0.3)\
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	
+	# 3. Return to Normal (Bounce back)
+	t.tween_property(self, "scale", Vector2.ONE, duration * 0.4)\
+		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_ELASTIC)
+
+# ------------------------------------------------------------------------------
+# SAVE/LOAD
+# ------------------------------------------------------------------------------
 func record_data() -> Dictionary:
 	return {
 		"position": _target_pos if is_moving else position
@@ -272,6 +307,12 @@ func record_data() -> Dictionary:
 func restore_data(data: Dictionary) -> void:
 	# Clean up any active movement or flags when restoring
 	if movement_tween: movement_tween.kill()
+	
+	# Stop any scale tweens and reset size immediately
+	var t = create_tween()
+	t.kill()
+	scale = Vector2.ONE
+	
 	is_moving = false
 	is_knockback_active = false
 	has_pending_level_entry = false
