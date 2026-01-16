@@ -9,17 +9,18 @@ var is_active: bool = false
 func _ready() -> void:
 	# Enable monitoring
 	monitoring = true
-	monitorable = false 
+	monitorable = false
 	
 	# Connect collision signals
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	
 	# Visual feedback (Start inactive)
-	modulate = Color.WHITE
+	modulate = Color(0.5, 1.5, 0.5)
 
 func _on_body_entered(body: Node2D) -> void:
 	# Checks for anything in the "box" group (Box.gd and Bomb.gd both have this)
+	print_debug(body.name)
 	if body.is_in_group("box"):
 		active_bodies.append(body)
 		_update_state()
@@ -40,4 +41,4 @@ func _update_state() -> void:
 		if is_active:
 			modulate = Color(0.5, 1.5, 0.5) # Glow Green
 		else:
-			modulate = Color.WHITE
+			modulate = Color(0.5, 1.5, 0.5)
