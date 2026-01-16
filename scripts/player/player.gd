@@ -30,6 +30,7 @@ var inputs: Dictionary = {
 func _ready() -> void:
 	add_to_group("revertable")
 	_target_pos = position 
+	
 
 func _unhandled_input(event: InputEvent) -> void:
 	# UTILITY INPUTS
