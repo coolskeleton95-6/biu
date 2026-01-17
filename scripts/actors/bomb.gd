@@ -1,6 +1,7 @@
 extends "res://scripts/actors/box.gd"
 
 @export var blast_range: int = 5
+@export var explosion_effect_scene: PackedScene
 
 func _ready() -> void:
 	# Calls box.gd _ready() to setup groups ("box", "revertable") and layers
@@ -8,7 +9,13 @@ func _ready() -> void:
 
 func explode() -> void:
 	print("Bomb exploded!")
-	
+
+	if explosion_effect_scene:
+		var effect = explosion_effect_scene.instantiate()
+		effect.global_position = global_position
+		# Add to parent (Level) so it doesn't get deleted with the bomb
+		get_parent().add_child(effect)
+
 	var space_state = get_world_2d().direct_space_state
 	var directions = [Vector2.UP, Vector2.DOWN, Vector2.LEFT, Vector2.RIGHT]
 	

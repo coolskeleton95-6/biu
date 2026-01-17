@@ -369,7 +369,7 @@ func die() -> void:
 		get_parent().add_child(effect)
 	
 	# 4. Wait a moment (Freeze frame / impact feel)
-	await get_tree().create_timer(0.1).timeout
+	await get_tree().create_timer(0.3).timeout
 	
 	# 5. Transition Out (Fade to Black)
 	# Assuming TransitionLayer is an Autoload. If not, you can reference it differently.
