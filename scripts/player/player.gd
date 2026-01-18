@@ -24,6 +24,7 @@ var _target_pos: Vector2
 var is_knockback_active: bool = false
 var has_pending_level_entry: bool = false
 var default_scale: Vector2 = Vector2.ONE # Store original scale here
+var current_facing_direction: Vector2 = Vector2.DOWN
 
 var inputs: Dictionary = {
 	"ui_right": Vector2.RIGHT,
@@ -36,29 +37,22 @@ func _ready() -> void:
 	add_to_group("revertable")
 	_target_pos = position 
 	
-	# Capture the editor-set scale so we don't overwrite it
 	if sprite:
 		default_scale = sprite.scale
 	else:
 		default_scale = scale
 	
-	# Matches BombPlacer's default 'facing_direction = Vector2.DOWN'
-	var initial_dir = Vector2.DOWN
-	
+	# Initialize direction
 	if bomb_placer:
-		bomb_placer.update_direction(initial_dir)
+		bomb_placer.update_direction(current_facing_direction)
 	
-	if sprite:
-		# Apply the same rotation logic as 'attempt_move'
-		# Assumes sprite texture faces UP (Rotation 0 = UP)
-		sprite.rotation = initial_dir.angle() + PI/2
+	# NEW: Update sprite frame instead of rotation
+	update_sprite_direction(current_facing_direction)
 
 	if has_node("/root/TransitionLayer"):
 		var transition = get_node("/root/TransitionLayer")
 		if "should_load_game" in transition and transition.should_load_game:
-			# Reset the flag so we don't load again if the level resets normally
 			transition.should_load_game = false
-			
 			if history_manager:
 				print("Continue requested: Loading save...")
 				history_manager.load_game_from_disk()
@@ -99,14 +93,29 @@ func reset_level() -> void:
 
 # ---------------------
 
+func update_sprite_direction(direction: Vector2) -> void:
+	current_facing_direction = direction
+	
+	if not sprite: return
+	
+	match direction:
+		Vector2.DOWN:
+			sprite.frame_coords.x = 1
+		Vector2.UP:
+			sprite.frame_coords.x = 0
+		Vector2.RIGHT:
+			sprite.frame_coords.x = 2
+			sprite.flip_h = false
+		Vector2.LEFT:
+			# If you have a dedicated Left row:
+			sprite.frame_coords.x = 3
+			sprite.flip_h = false
+
 func attempt_move(direction: Vector2) -> void:
 	if bomb_placer:
 		bomb_placer.update_direction(direction)
 	
-	# ROTATE SPRITE TO FACE DIRECTION
-	if sprite:
-		# direction.angle() returns 0 for RIGHT, PI/2 for DOWN, etc.
-		sprite.rotation = direction.angle() + PI/2
+	update_sprite_direction(direction)
 		
 	if is_moving:
 		input_buffer = direction
@@ -340,23 +349,26 @@ func _animate_jelly(duration: float) -> void:
 func record_data() -> Dictionary:
 	return {
 		"position": _target_pos if is_moving else position,
-		# Optional: save rotation if needed
-		"rotation": sprite.rotation if sprite else 0.0 
+		# NEW: Save the vector direction instead of rotation
+		"facing_dir_x": current_facing_direction.x,
+		"facing_dir_y": current_facing_direction.y
 	}
 
 func restore_data(data: Dictionary) -> void:
-	# Clean up any active movement or flags when restoring
 	if movement_tween: movement_tween.kill()
 	
-	# Stop any scale tweens and reset size immediately
 	var t = create_tween()
 	t.kill()
 	
 	var visual_target = sprite if sprite else self
-	visual_target.scale = default_scale # Reset to the stored default, NOT Vector2.ONE
+	visual_target.scale = default_scale 
 	
-	if sprite and "rotation" in data:
-		sprite.rotation = data.rotation
+	# NEW: Restore direction from saved vector components
+	if "facing_dir_x" in data and "facing_dir_y" in data:
+		var dir = Vector2(data.facing_dir_x, data.facing_dir_y)
+		update_sprite_direction(dir)
+		if bomb_placer:
+			bomb_placer.update_direction(dir)
 	
 	is_moving = false
 	is_knockback_active = false
