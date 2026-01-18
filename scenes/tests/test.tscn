@@ -37,6 +37,7 @@ debug_draw = false
 [node name="Lighting" parent="." instance=ExtResource("5_8ivcm")]
 
 [node name="AmbientParticles" parent="." instance=ExtResource("1_ajgsl")]
+base_color = Color(0.7399999, 0.61, 1, 0.78431374)
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_ajgsl")

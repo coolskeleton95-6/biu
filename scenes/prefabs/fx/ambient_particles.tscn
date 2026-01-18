@@ -3,101 +3,58 @@
 [sub_resource type="GDScript" id="GDScript_lgrss"]
 script/source = "extends Parallax2D
 
-# --- Configuration ---
-@export_group(\"Visuals\")
-@export var particle_color: Color = Color(\"c2f3ff\") # Cyan-ish white default
-@export var density: int = 20 # Particles per layer
-@export var glow_intensity: float = 1.5 # Values > 1.0 trigger HDR Glow
-
-@export_group(\"Motion\")
-@export var wind_speed: Vector2 = Vector2(10.0, -5.0) # Slight drift
-@export var spread_area: Vector2 = Vector2(640, 360) # Covers screen + buffer
+@export var particle_count: int = 20
+@export var spawn_area: Vector2 = Vector2(480, 270) # Default viewport size, adjust as needed
+@export var base_color: Color = Color(1, 1, 1, 0.4) # Slightly transparent white
 
 func _ready() -> void:
-	# 1. Generate a soft glow texture procedurally
-	var tex = _generate_soft_particle_texture()
+	# 1. Create a \"Large Glow\" Texture (Hollow Knight Style)
+	# We use 64x64 to allow for a large, soft gradient falloff.
+	var size = 64
+	var radius = 30.0
+	var center = Vector2(size / 2.0, size / 2.0)
 	
-	# 2. Create 3 Layers of Depth
-	# Layer 1: Background (Moves slowly, appears far away)
-	_create_layer(tex, \"BackLayer\", Vector2(0.2, 0.2), 0.5)
-	
-	# Layer 2: Midground (Average speed)
-	_create_layer(tex, \"MidLayer\", Vector2(0.6, 0.6), 0.8)
-	
-	# Layer 3: Foreground (Moves faster than camera, appears close)
-	_create_layer(tex, \"FrontLayer\", Vector2(1.2, 1.2), 1.0)
-
-func _create_layer(texture: Texture2D, layer_name: String, motion_scale: Vector2, alpha_mult: float) -> void:
-	var layer = ParallaxLayer.new()
-	layer.name = layer_name
-	layer.motion_scale = motion_scale
-	
-	# IMPORTANT: Mirroring allows the particles to repeat infinitely
-	layer.motion_mirroring = spread_area
-	
-	add_child(layer)
-	
-	# Create the Particle Emitter
-	var particles = CPUParticles2D.new()
-	particles.amount = density
-	particles.texture = texture
-	particles.lifetime = 10.0
-	particles.preprocess = 10.0 # Start fully populated
-	
-	# Physics / Movement
-	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
-	particles.emission_rect_extents = spread_area / 2.0
-	particles.gravity = Vector2.ZERO
-	particles.direction = Vector2.UP
-	particles.spread = 180.0
-	particles.initial_velocity_min = 5.0
-	particles.initial_velocity_max = 15.0
-	
-	# Drift (Wind)
-	particles.gravity = wind_speed * (1.0 / motion_scale.x) # Parallax the wind too
-	
-	# Visuals
-	particles.scale_amount_min = 0.5 * motion_scale.x # Far objects are smaller
-	particles.scale_amount_max = 1.5 * motion_scale.x
-	
-	# Color & Glow
-	# We multiply RGB by 'glow_intensity' to push values above 1.0 for WorldEnvironment Glow
-	var hdr_color = particle_color
-	hdr_color.r *= glow_intensity
-	hdr_color.g *= glow_intensity
-	hdr_color.b *= glow_intensity
-	hdr_color.a = alpha_mult
-	
-	particles.modulate = hdr_color
-	
-	# Fade in/out transparency curve
-	var curve = Curve.new()
-	curve.add_point(Vector2(0, 0))
-	curve.add_point(Vector2(0.2, 1))
-	curve.add_point(Vector2(0.8, 1))
-	curve.add_point(Vector2(1, 0))
-	particles.scale_amount_curve = curve
-	
-	layer.add_child(particles)
-
-# Procedural Texture Generation (Similar to your bomb_explosion.gd logic)
-func _generate_soft_particle_texture() -> ImageTexture:
-	var size = 16
 	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
-	img.fill(Color(0, 0, 0, 0))
 	
-	var center = Vector2(size/2.0, size/2.0)
-	var max_radius = size / 2.0
-	
-	for x in range(size):
-		for y in range(size):
+	for y in range(size):
+		for x in range(size):
 			var dist = center.distance_to(Vector2(x, y))
-			if dist <= max_radius:
-				# Soft falloff (1.0 at center, 0.0 at edge)
-				var alpha = pow(1.0 - (dist / max_radius), 2.0)
+			if dist <= radius:
+				# Calculate Alpha: Soft quadratic falloff
+				# 1.0 at center, 0.0 at edge
+				var alpha = pow(1.0 - (dist / radius), 2.5)
 				img.set_pixel(x, y, Color(1, 1, 1, alpha))
-				
-	return ImageTexture.create_from_image(img)
+	
+	var tex = ImageTexture.create_from_image(img)
+	
+	# 2. Spawn Particles
+	for i in range(particle_count):
+		var p = Sprite2D.new()
+		p.texture = tex
+		p.modulate = base_color
+		
+		# Randomize Position & Scale
+		p.position = Vector2(randf() * spawn_area.x, randf() * spawn_area.y)
+		# Varied scale creates depth perception (0.5 to 1.5 times the 64px texture)
+		p.scale = Vector2.ONE * randf_range(0.5, 1.5)
+		
+		add_child(p)
+		
+		# 3. Floating Animation
+		_animate_particle(p)
+
+func _animate_particle(p: Sprite2D) -> void:
+	var tween = create_tween().set_loops()
+	
+	# Random sway parameters
+	var move_offset = Vector2(randf_range(-4, 4), randf_range(-10, -20))
+	var duration = randf_range(3.0, 6.0)
+	
+	# Bob up and down gently
+	tween.tween_property(p, \"position\", p.position + move_offset, duration)\\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(p, \"position\", p.position, duration)\\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 "
 
 [node name="AmbientParticles" type="Parallax2D"]

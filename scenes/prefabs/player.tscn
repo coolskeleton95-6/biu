@@ -43,6 +43,6 @@ bomb_scene = ExtResource("4_8cdkg")
 script = ExtResource("5_56dyf")
 
 [node name="PointLight2D" type="PointLight2D" parent="."]
-energy = 0.2
+energy = 0.5
 shadow_enabled = true
 texture = SubResource("GradientTexture2D_6o77n")
