@@ -7,6 +7,11 @@ extends Node2D
 @export var particle_color: Color = Color.WHITE
 
 func _ready() -> void:
+	print_debug("hihihiha")
+	# The parent layer might be at Z-Index -50, so we disable relative Z to break out.
+	z_as_relative = false
+	z_index = 100
+
 	# 1. Create a simple circular texture programmatically
 	# (Matches the visual style of the previous implementation)
 	var img = Image.create(8, 8, false, Image.FORMAT_RGBA8)

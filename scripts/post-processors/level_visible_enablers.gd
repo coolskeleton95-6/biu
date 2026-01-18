@@ -1,9 +1,5 @@
 @tool
 
-## Level Post-Import: Add VisibleEnablers
-## VisibleOnScreenEnablers are used to enable/disable nodes when they appear/disappear on screen.
-## This is useful to optimise your game by reducing unnecessary processing.
-
 func post_import(level: LDTKLevel) -> LDTKLevel:
 	# Z level & Optimization
 	var children = level.get_children()
