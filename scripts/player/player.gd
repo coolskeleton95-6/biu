@@ -363,7 +363,7 @@ func restore_data(data: Dictionary) -> void:
 	var visual_target = sprite if sprite else self
 	visual_target.scale = default_scale 
 	
-	# NEW: Restore direction from saved vector components
+	# Restore direction from saved vector components
 	if "facing_dir_x" in data and "facing_dir_y" in data:
 		var dir = Vector2(data.facing_dir_x, data.facing_dir_y)
 		update_sprite_direction(dir)
@@ -376,6 +376,21 @@ func restore_data(data: Dictionary) -> void:
 	
 	position = data.position
 	_target_pos = data.position
+	
+	# Check if we reverted into a wall
+	# We check Layer 2 (Wall Layer) at the restored position
+	var space_state = get_world_2d().direct_space_state
+	var query = PhysicsPointQueryParameters2D.new()
+	query.position = position
+	query.collision_mask = wall_layer 
+	query.collide_with_bodies = true
+	
+	var results = space_state.intersect_point(query)
+	for result in results:
+		var collider = result.collider
+		if collider.is_in_group("wall"):
+			print("Player reverted into a wall!")
+			die()
 
 func die() -> void:
 	var camera = get_viewport().get_camera_2d()
