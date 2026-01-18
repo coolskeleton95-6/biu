@@ -41,7 +41,9 @@ bomb_scene = ExtResource("4_8cdkg")
 
 [node name="HistoryManager" type="Node" parent="."]
 script = ExtResource("5_56dyf")
+max_history = 500
 
 [node name="PointLight2D" type="PointLight2D" parent="."]
+energy = 0.5
 shadow_enabled = true
 texture = SubResource("GradientTexture2D_6o77n")
