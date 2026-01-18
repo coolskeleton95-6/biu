@@ -26,6 +26,8 @@ var has_pending_level_entry: bool = false
 var default_scale: Vector2 = Vector2.ONE # Store original scale here
 var current_facing_direction: Vector2 = Vector2.DOWN
 
+var is_dead: bool = false
+
 var inputs: Dictionary = {
 	"ui_right": Vector2.RIGHT,
 	"ui_left": Vector2.LEFT,
@@ -363,7 +365,7 @@ func restore_data(data: Dictionary) -> void:
 	var visual_target = sprite if sprite else self
 	visual_target.scale = default_scale 
 	
-	# NEW: Restore direction from saved vector components
+	# Restore direction from saved vector components
 	if "facing_dir_x" in data and "facing_dir_y" in data:
 		var dir = Vector2(data.facing_dir_x, data.facing_dir_y)
 		update_sprite_direction(dir)
@@ -376,52 +378,71 @@ func restore_data(data: Dictionary) -> void:
 	
 	position = data.position
 	_target_pos = data.position
+	
+	# Only run this check if we are NOT currently dying.
+	# This prevents the checkpoint load (which calls restore_data) from killing us again.
+	if not is_dead:
+		var space_state = get_world_2d().direct_space_state
+		var query = PhysicsPointQueryParameters2D.new()
+		query.position = position
+		query.collision_mask = wall_layer 
+		query.collide_with_bodies = true
+		
+		var results = space_state.intersect_point(query)
+		for result in results:
+			var collider = result.collider
+			if collider.is_in_group("wall"):
+				print("Player reverted into a wall!")
+				die()
 
 func die() -> void:
+	if is_dead: return
+	is_dead = true
+
 	var camera = get_viewport().get_camera_2d()
 	if camera and camera.has_method("shake_screen"):
-		camera.shake_screen(0.6) # 60% Trauma
+		camera.shake_screen(0.6) 
 	
 	# 1. Disable Input and Physics
 	set_process_unhandled_input(false)
 	set_physics_process(false)
 	is_moving = false
-	if movement_tween: movement_tween.kill()
+	if movement_tween: 
+		movement_tween.kill()
 	
 	# 2. Hide Player Visuals
 	if sprite:
 		sprite.visible = false
 	
 	# 3. Spawn Death Particles
-	# We spawn them in the parent (Level) so they don't move with the player during reset
 	if death_effect_scene:
 		var effect = death_effect_scene.instantiate()
 		effect.global_position = global_position
 		get_parent().add_child(effect)
 	
-	# 4. Wait a moment (Freeze frame / impact feel)
+	# 4. Wait a moment
 	await get_tree().create_timer(0.3).timeout
 	
-	# 5. Transition Out (Fade to Black)
-	# Assuming TransitionLayer is an Autoload. If not, you can reference it differently.
+	# 5. Transition Out
 	if has_node("/root/TransitionLayer"):
 		await get_node("/root/TransitionLayer").fade_out(0.4)
 	else:
-		# Fallback if no transition screen exists
 		await get_tree().create_timer(0.4).timeout
 	
 	# 6. Load Checkpoint (Respawn Logic)
+	# This will call restore_data(), but our is_dead flag will prevent a second death.
 	if history_manager:
 		history_manager.load_checkpoint()
 	
 	# 7. Restore Player State
 	if sprite:
 		sprite.visible = true
-		sprite.scale = default_scale # Reset any jelly deformation
+		sprite.scale = default_scale
 		
 	set_process_unhandled_input(true)
 	set_physics_process(true)
+	is_dead = false # [NEW] Reset death state so we can die again later
 	
-	# 8. Transition In (Fade to Game)
+	# 8. Transition In
 	if has_node("/root/TransitionLayer"):
 		get_node("/root/TransitionLayer").fade_in(0.3)

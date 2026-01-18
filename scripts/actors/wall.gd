@@ -104,7 +104,22 @@ func _on_recover_timeout() -> void:
 	visible = true
 	collision_layer = _initial_layer
 	
-	# [NEW] Bounce Animation: Start at zero and spring back to initial size
+	# Check if Player is trapped inside the restored wall
+	# We query Layer 1 (Player) at our position
+	var space_state = get_world_2d().direct_space_state
+	var query = PhysicsPointQueryParameters2D.new()
+	query.position = global_position
+	query.collision_mask = 1 # Player Layer
+	query.collide_with_bodies = true
+	
+	var results = space_state.intersect_point(query)
+	for result in results:
+		var collider = result.collider
+		if collider.has_method("die"):
+			print("Wall recovered on top of player!")
+			collider.die()
+	
+	# Bounce Animation: Start at zero and spring back to initial size
 	scale = Vector2.ZERO
 	var tween = create_tween()
 	tween.set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
