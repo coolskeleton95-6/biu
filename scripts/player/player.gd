@@ -366,6 +366,10 @@ func restore_data(data: Dictionary) -> void:
 	_target_pos = data.position
 
 func die() -> void:
+	var camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("shake_screen"):
+		camera.shake_screen(0.6) # 60% Trauma
+	
 	# 1. Disable Input and Physics
 	set_process_unhandled_input(false)
 	set_physics_process(false)
