@@ -4,12 +4,17 @@
 script/source = "extends Parallax2D
 
 @export var particle_count: int = 20
-@export var spawn_area: Vector2 = Vector2(480, 270) # Default viewport size, adjust as needed
-@export var base_color: Color = Color(1, 1, 1, 0.4) # Slightly transparent white
+# spawn_area now represents the Size of the rectangle around the camera
+@export var spawn_area: Vector2 = Vector2(960, 540) 
+@export var base_color: Color = Color(1, 1, 1, 0.4)
+
+# New settings for lifecycle
+@export var min_lifespan: float = 3.0
+@export var max_lifespan: float = 6.0
+@export var fade_duration: float = 1.0
 
 func _ready() -> void:
-	# 1. Create a \"Large Glow\" Texture (Hollow Knight Style)
-	# We use 64x64 to allow for a large, soft gradient falloff.
+	# 1. Create a \"Large Glow\" Texture (Procedural)
 	var size = 64
 	var radius = 30.0
 	var center = Vector2(size / 2.0, size / 2.0)
@@ -20,41 +25,90 @@ func _ready() -> void:
 		for x in range(size):
 			var dist = center.distance_to(Vector2(x, y))
 			if dist <= radius:
-				# Calculate Alpha: Soft quadratic falloff
-				# 1.0 at center, 0.0 at edge
 				var alpha = pow(1.0 - (dist / radius), 2.5)
 				img.set_pixel(x, y, Color(1, 1, 1, alpha))
 	
 	var tex = ImageTexture.create_from_image(img)
 	
-	# 2. Spawn Particles
+	# 2. Create Particles
 	for i in range(particle_count):
 		var p = Sprite2D.new()
 		p.texture = tex
+		# Start invisible so they can fade in
 		p.modulate = base_color
+		p.modulate.a = 0.0 
 		
-		# Randomize Position & Scale
-		p.position = Vector2(randf() * spawn_area.x, randf() * spawn_area.y)
-		# Varied scale creates depth perception (0.5 to 1.5 times the 64px texture)
+		# Varied scale
 		p.scale = Vector2.ONE * randf_range(0.5, 1.5)
 		
 		add_child(p)
 		
-		# 3. Floating Animation
-		_animate_particle(p)
+		# 3. Start Cycle
+		# We add a small random delay so they don't all spawn at the exact same millisecond
+		get_tree().create_timer(randf_range(0.0, 2.0)).timeout.connect(_animate_particle.bind(p))
 
 func _animate_particle(p: Sprite2D) -> void:
-	var tween = create_tween().set_loops()
+	# --- 1. RESET STATE ---
 	
-	# Random sway parameters
-	var move_offset = Vector2(randf_range(-4, 4), randf_range(-10, -20))
-	var duration = randf_range(3.0, 6.0)
+	# A. Get the camera center (or viewport center if no camera)
+	var center_global_pos = Vector2.ZERO
+	var viewport = get_viewport()
+	var cam = viewport.get_camera_2d()
 	
-	# Bob up and down gently
-	tween.tween_property(p, \"position\", p.position + move_offset, duration)\\
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(p, \"position\", p.position, duration)\\
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if cam:
+		center_global_pos = cam.get_screen_center_position()
+	else:
+		# Fallback if no camera is active (e.g. testing in editor without camera)
+		var transform = viewport.get_canvas_transform()
+		var view_size = viewport.get_visible_rect().size
+		center_global_pos = -transform.origin + (view_size / 2.0)
+
+	# B. Convert that Global position to Local position inside this Parallax2D
+	# This ensures particles spawn near the camera regardless of parallax scroll
+	var center_local_pos = to_local(center_global_pos)
+	
+	# C. Randomize offset within the spawn_area centered on the camera
+	var half_size = spawn_area / 2.0
+	var random_offset = Vector2(
+		randf_range(-half_size.x, half_size.x),
+		randf_range(-half_size.y, half_size.y)
+	)
+	
+	var start_pos = center_local_pos + random_offset
+	p.position = start_pos
+	p.modulate.a = 0.0 
+
+	# Determine how long this specific cycle lasts
+	var total_life = randf_range(min_lifespan, max_lifespan)
+	
+	# Determine drift (move slightly up or sideways while alive)
+	var drift_offset = Vector2(randf_range(-20, 20), randf_range(-10, -30))
+	
+	# --- 2. CREATE TWEEN ---
+	var tween = create_tween()
+	
+	# Allow fading and movement to happen simultaneously
+	tween.set_parallel(true)
+	
+	# A) Movement: Drift from start to target over the total life
+	tween.tween_property(p, \"position\", start_pos + drift_offset, total_life)\\
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	
+	var alpha_tween = create_tween()
+	
+	# 1. Fade In
+	alpha_tween.tween_property(p, \"modulate:a\", base_color.a, fade_duration)
+	
+	# 2. Wait (Total life minus fade in and fade out times)
+	var sustain_time = max(0.0, total_life - (fade_duration * 2))
+	alpha_tween.tween_interval(sustain_time)
+	
+	# 3. Fade Out
+	alpha_tween.tween_property(p, \"modulate:a\", 0.0, fade_duration)
+	
+	# --- 3. RESTART ---
+	# When the alpha tween is done, restart the whole process
+	alpha_tween.tween_callback(_animate_particle.bind(p))
 "
 
 [node name="AmbientParticles" type="Parallax2D"]
