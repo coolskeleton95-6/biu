@@ -30,9 +30,11 @@ color = Color(1, 0, 1, 1)
 
 [node name="return to game" type="Button" parent="."]
 layout_mode = 0
-offset_left = 930.0
-offset_right = 1148.0
-offset_bottom = 120.0
+offset_left = 1032.0
+offset_top = 8.0
+offset_right = 1140.0
+offset_bottom = 104.0
+theme_override_font_sizes/font_size = 32
 text = "close"
 
 [connection signal="pressed" from="return to game" to="." method="_on_return_to_game_pressed"]
