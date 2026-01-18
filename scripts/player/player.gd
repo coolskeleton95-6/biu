@@ -83,7 +83,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func on_level_entered() -> void:
 	# Called by Camera2D when entering a new room.
-	# CRITICAL FIX: If we are uncontrolled (knockback), DO NOT save yet.
+	# If we are uncontrolled (knockback), DO NOT save yet.
 	# We might be flying over a void or hazard.
 	if is_knockback_active:
 		has_pending_level_entry = true
@@ -132,7 +132,7 @@ func move(direction: Vector2) -> void:
 		if box.is_in_group("box"):
 			if can_push_box(box, direction):
 				push_box(box, direction)
-				move_player(target_pos)
+				move_player(target_pos, 0.05)
 		else:
 			return 
 	else:
@@ -160,7 +160,7 @@ func push_box(box: Node2D, direction: Vector2) -> void:
 	tween.tween_property(box, "position", box_target, move_speed)
 	tween.tween_callback(Callable(box, "check_on_water"))
 
-func move_player(target_pos: Vector2) -> void:
+func move_player(target_pos: Vector2, start_delay: float = 0.0) -> void:
 	is_moving = true
 	_target_pos = target_pos 
 	
@@ -169,6 +169,10 @@ func move_player(target_pos: Vector2) -> void:
 	
 	if movement_tween: movement_tween.kill()
 	movement_tween = create_tween()
+	
+	if start_delay > 0.0:
+		movement_tween.tween_interval(start_delay)
+
 	movement_tween.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	movement_tween.tween_property(self, "position", target_pos, move_speed)
 	movement_tween.tween_callback(_on_move_finished)
