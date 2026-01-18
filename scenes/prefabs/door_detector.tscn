@@ -1,7 +1,13 @@
-[gd_scene load_steps=5 format=3 uid="uid://dm3j6hn5k2kpa"]
+[gd_scene load_steps=7 format=3 uid="uid://dm3j6hn5k2kpa"]
 
 [ext_resource type="Script" uid="uid://3p7oiwt13fj2" path="res://scripts/actors/door_detector.gd" id="1_lbsto"]
+[ext_resource type="Shader" uid="uid://djaneob775wmu" path="res://scripts/components/outline.gdshader" id="2_4xuud"]
 [ext_resource type="Texture2D" uid="uid://chqy703q3qfaw" path="res://textures/actors/bottomv1.png" id="2_lbsto"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_t58y6"]
+shader = ExtResource("2_4xuud")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/line_thickness = 1.0
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_hnj8j"]
 size = Vector2(16, 16)
@@ -16,6 +22,7 @@ script = ExtResource("1_lbsto")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = -10
+material = SubResource("ShaderMaterial_t58y6")
 texture = ExtResource("2_lbsto")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]

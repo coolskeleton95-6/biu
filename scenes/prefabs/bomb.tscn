@@ -17,5 +17,5 @@ explosion_effect_scene = ExtResource("3_7khdj")
 scale = Vector2(1, 1)
 texture = ExtResource("3_6kri3")
 
-[node name="LightOccluder2D" type="LightOccluder2D" parent="." index="2"]
+[node name="LightOccluder2D2" type="LightOccluder2D" parent="." index="2"]
 occluder = SubResource("OccluderPolygon2D_7khdj")

@@ -1,7 +1,13 @@
-[gd_scene load_steps=5 format=3 uid="uid://dqqxtudxotl1t"]
+[gd_scene load_steps=7 format=3 uid="uid://dqqxtudxotl1t"]
 
 [ext_resource type="Script" uid="uid://dtbinvi8ka8ir" path="res://scripts/actors/box.gd" id="1_y1l2d"]
-[ext_resource type="Texture2D" uid="uid://besyv1ynxjkjy" path="res://textures/actors/woodcrate v1.png" id="2_y1l2d"]
+[ext_resource type="Texture2D" uid="uid://di16ng7e2ma1o" path="res://textures/actors/woodcrate v2.png" id="2_y1l2d"]
+[ext_resource type="Shader" uid="uid://djaneob775wmu" path="res://scripts/components/outline.gdshader" id="2_yonip"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_0t13k"]
+shader = ExtResource("2_yonip")
+shader_parameter/line_color = Color(1, 1, 1, 1)
+shader_parameter/line_thickness = 8.00000038
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_weoh1"]
 size = Vector2(16, 16)
@@ -14,6 +20,7 @@ collision_layer = 4
 script = ExtResource("1_y1l2d")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+material = SubResource("ShaderMaterial_0t13k")
 scale = Vector2(0.125, 0.125)
 texture = ExtResource("2_y1l2d")
 
