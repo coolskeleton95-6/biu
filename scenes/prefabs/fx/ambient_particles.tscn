@@ -1,0 +1,104 @@
+[gd_scene load_steps=2 format=3 uid="uid://d0uk6nmmnjg0l"]
+
+[sub_resource type="GDScript" id="GDScript_lgrss"]
+script/source = "extends Parallax2D
+
+# --- Configuration ---
+@export_group(\"Visuals\")
+@export var particle_color: Color = Color(\"c2f3ff\") # Cyan-ish white default
+@export var density: int = 20 # Particles per layer
+@export var glow_intensity: float = 1.5 # Values > 1.0 trigger HDR Glow
+
+@export_group(\"Motion\")
+@export var wind_speed: Vector2 = Vector2(10.0, -5.0) # Slight drift
+@export var spread_area: Vector2 = Vector2(640, 360) # Covers screen + buffer
+
+func _ready() -> void:
+	# 1. Generate a soft glow texture procedurally
+	var tex = _generate_soft_particle_texture()
+	
+	# 2. Create 3 Layers of Depth
+	# Layer 1: Background (Moves slowly, appears far away)
+	_create_layer(tex, \"BackLayer\", Vector2(0.2, 0.2), 0.5)
+	
+	# Layer 2: Midground (Average speed)
+	_create_layer(tex, \"MidLayer\", Vector2(0.6, 0.6), 0.8)
+	
+	# Layer 3: Foreground (Moves faster than camera, appears close)
+	_create_layer(tex, \"FrontLayer\", Vector2(1.2, 1.2), 1.0)
+
+func _create_layer(texture: Texture2D, layer_name: String, motion_scale: Vector2, alpha_mult: float) -> void:
+	var layer = ParallaxLayer.new()
+	layer.name = layer_name
+	layer.motion_scale = motion_scale
+	
+	# IMPORTANT: Mirroring allows the particles to repeat infinitely
+	layer.motion_mirroring = spread_area
+	
+	add_child(layer)
+	
+	# Create the Particle Emitter
+	var particles = CPUParticles2D.new()
+	particles.amount = density
+	particles.texture = texture
+	particles.lifetime = 10.0
+	particles.preprocess = 10.0 # Start fully populated
+	
+	# Physics / Movement
+	particles.emission_shape = CPUParticles2D.EMISSION_SHAPE_RECTANGLE
+	particles.emission_rect_extents = spread_area / 2.0
+	particles.gravity = Vector2.ZERO
+	particles.direction = Vector2.UP
+	particles.spread = 180.0
+	particles.initial_velocity_min = 5.0
+	particles.initial_velocity_max = 15.0
+	
+	# Drift (Wind)
+	particles.gravity = wind_speed * (1.0 / motion_scale.x) # Parallax the wind too
+	
+	# Visuals
+	particles.scale_amount_min = 0.5 * motion_scale.x # Far objects are smaller
+	particles.scale_amount_max = 1.5 * motion_scale.x
+	
+	# Color & Glow
+	# We multiply RGB by 'glow_intensity' to push values above 1.0 for WorldEnvironment Glow
+	var hdr_color = particle_color
+	hdr_color.r *= glow_intensity
+	hdr_color.g *= glow_intensity
+	hdr_color.b *= glow_intensity
+	hdr_color.a = alpha_mult
+	
+	particles.modulate = hdr_color
+	
+	# Fade in/out transparency curve
+	var curve = Curve.new()
+	curve.add_point(Vector2(0, 0))
+	curve.add_point(Vector2(0.2, 1))
+	curve.add_point(Vector2(0.8, 1))
+	curve.add_point(Vector2(1, 0))
+	particles.scale_amount_curve = curve
+	
+	layer.add_child(particles)
+
+# Procedural Texture Generation (Similar to your bomb_explosion.gd logic)
+func _generate_soft_particle_texture() -> ImageTexture:
+	var size = 16
+	var img = Image.create(size, size, false, Image.FORMAT_RGBA8)
+	img.fill(Color(0, 0, 0, 0))
+	
+	var center = Vector2(size/2.0, size/2.0)
+	var max_radius = size / 2.0
+	
+	for x in range(size):
+		for y in range(size):
+			var dist = center.distance_to(Vector2(x, y))
+			if dist <= max_radius:
+				# Soft falloff (1.0 at center, 0.0 at edge)
+				var alpha = pow(1.0 - (dist / max_radius), 2.0)
+				img.set_pixel(x, y, Color(1, 1, 1, alpha))
+				
+	return ImageTexture.create_from_image(img)
+"
+
+[node name="AmbientParticles" type="Parallax2D"]
+script = SubResource("GDScript_lgrss")

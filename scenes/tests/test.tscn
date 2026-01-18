@@ -1,10 +1,17 @@
-[gd_scene load_steps=6 format=3 uid="uid://biht6m8hp5ua2"]
+[gd_scene load_steps=8 format=3 uid="uid://biht6m8hp5ua2"]
 
 [ext_resource type="PackedScene" uid="uid://dmobj48t0e52h" path="res://terrains/biu_world.ldtk" id="1_8cg7g"]
+[ext_resource type="PackedScene" uid="uid://d0uk6nmmnjg0l" path="res://scenes/prefabs/fx/ambient_particles.tscn" id="1_ajgsl"]
 [ext_resource type="PackedScene" uid="uid://cmjakkvxvdbgv" path="res://scenes/gui/pause_menu.tscn" id="1_weoh1"]
 [ext_resource type="PackedScene" uid="uid://bff2w370b4ou8" path="res://scenes/prefabs/player.tscn" id="2_syyn5"]
 [ext_resource type="Script" uid="uid://cw48i34tff1gk" path="res://scripts/actors/camera_2d.gd" id="3_weoh1"]
 [ext_resource type="PackedScene" uid="uid://3ejdt1uohona" path="res://scenes/prefabs/lighting.tscn" id="5_8ivcm"]
+
+[sub_resource type="Environment" id="Environment_ajgsl"]
+background_mode = 3
+glow_enabled = true
+glow_intensity = 2.0
+glow_bloom = 0.3
 
 [node name="Test" type="Node2D"]
 
@@ -28,3 +35,8 @@ transition_type = 5
 debug_draw = false
 
 [node name="Lighting" parent="." instance=ExtResource("5_8ivcm")]
+
+[node name="AmbientParticles" parent="." instance=ExtResource("1_ajgsl")]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_ajgsl")
