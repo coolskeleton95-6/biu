@@ -5,16 +5,21 @@ const TRANSITION_SHADER = preload("res://scripts/gui/transition/diamond_wipe.gds
 
 @onready var color_rect: ColorRect = $ColorRect
 
-# [NEW] Flag to track if we should load the save file on the next scene load
+# Flag to track if we should load the save file on the next scene load
 var should_load_game: bool = false
 
+# [NEW] Variables to store reset position across scene reloads
+var stored_reset_position: Variant = null
+var stored_reset_direction: Variant = null
+
 func _ready() -> void:
+	# ... (Keep existing code)
 	# Create ColorRect if it doesn't exist
 	if not color_rect:
 		color_rect = ColorRect.new()
 		color_rect.color = Color.BLACK
 		color_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
-		color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE # Don't block mouse when transparent
+		color_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE 
 		add_child(color_rect)
 	
 	# Create and assign the ShaderMaterial
@@ -27,6 +32,7 @@ func _ready() -> void:
 	color_rect.visible = false
 	visible = false
 
+# ... (Keep existing fade_out / fade_in functions)
 func fade_out(duration: float = 0.4) -> void:
 	visible = true
 	color_rect.visible = true

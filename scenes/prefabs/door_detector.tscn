@@ -1,8 +1,9 @@
-[gd_scene load_steps=7 format=3 uid="uid://dm3j6hn5k2kpa"]
+[gd_scene load_steps=8 format=3 uid="uid://dm3j6hn5k2kpa"]
 
 [ext_resource type="Script" uid="uid://3p7oiwt13fj2" path="res://scripts/actors/door_detector.gd" id="1_lbsto"]
 [ext_resource type="Shader" uid="uid://djaneob775wmu" path="res://scripts/components/outline.gdshader" id="2_4xuud"]
 [ext_resource type="Texture2D" uid="uid://chqy703q3qfaw" path="res://textures/actors/bottomv1.png" id="2_lbsto"]
+[ext_resource type="PackedScene" uid="uid://bceygop5vimpd" path="res://scenes/prefabs/fx/door_activation.tscn" id="2_t58y6"]
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_t58y6"]
 shader = ExtResource("2_4xuud")
@@ -13,12 +14,13 @@ shader_parameter/line_thickness = 1.0
 size = Vector2(16, 16)
 
 [sub_resource type="OccluderPolygon2D" id="OccluderPolygon2D_lbsto"]
-polygon = PackedVector2Array(-5, 0, -5, 6, 6, 6, 6, 0)
+polygon = PackedVector2Array(-5, 2, -5, 6, 6, 6, 6, 2)
 
 [node name="DoorDetector" type="Area2D"]
 collision_layer = 0
-collision_mask = 14
+collision_mask = 15
 script = ExtResource("1_lbsto")
+activation_effect_scene = ExtResource("2_t58y6")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 z_index = -10

@@ -18,7 +18,6 @@ glow_bloom = 0.2
 [node name="Test" type="Node2D"]
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
-visible = false
 
 [node name="PauseMenu" parent="CanvasLayer" instance=ExtResource("1_weoh1")]
 
@@ -27,7 +26,7 @@ visible = false
 [node name="biu_world" parent="." instance=ExtResource("1_8cg7g")]
 
 [node name="Player" parent="." instance=ExtResource("2_syyn5")]
-position = Vector2(72, -24)
+position = Vector2(1112, 1048)
 
 [node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("player", "levels_parent")]
 position = Vector2(144, 80)

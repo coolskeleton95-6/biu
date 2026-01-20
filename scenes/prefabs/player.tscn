@@ -33,14 +33,15 @@ script = ExtResource("1_tou0u")
 death_effect_scene = ExtResource("2_6o77n")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
+z_index = 5
 material = SubResource("ShaderMaterial_r053x")
 texture = ExtResource("3_6o77n")
 hframes = 4
 
-[node name="RayCast2D" type="RayCast2D" parent="."]
-
 [node name="CollisionShape2D" type="CollisionShape2D" parent="."]
 shape = SubResource("RectangleShape2D_tou0u")
+
+[node name="RayCast2D" type="RayCast2D" parent="."]
 
 [node name="BombPlacer" type="Node2D" parent="."]
 script = ExtResource("3_n0leu")

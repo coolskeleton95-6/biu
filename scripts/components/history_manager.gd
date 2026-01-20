@@ -118,3 +118,15 @@ func restore_state(snapshot: Dictionary) -> void:
 		
 		if node and node.has_method("restore_data"):
 			node.restore_data(snapshot[node_path])
+func get_last_checkpoint_player_data() -> Dictionary:
+	# Iterate backwards to find the most recent tag
+	for i in range(state_history.size() - 1, -1, -1):
+		if state_history[i].get("is_tag", false):
+			var snapshot = state_history[i]
+			# The HistoryManager is a child of Player, so we look for parent's path
+			var player = get_parent()
+			var player_path = player.get_path()
+			
+			if snapshot.has(player_path):
+				return snapshot[player_path]
+	return {}

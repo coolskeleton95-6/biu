@@ -1,4 +1,4 @@
-extends Node2D
+extends CharacterBody2D
 
 # SETTINGS
 @export var tile_size: int = 16
@@ -37,6 +37,7 @@ var inputs: Dictionary = {
 
 func _ready() -> void:
 	add_to_group("revertable")
+	add_to_group("player")
 	_target_pos = position 
 	
 	if sprite:
@@ -48,11 +49,35 @@ func _ready() -> void:
 	if bomb_placer:
 		bomb_placer.update_direction(current_facing_direction)
 	
-	# NEW: Update sprite frame instead of rotation
+	# Update sprite frame instead of rotation
 	update_sprite_direction(current_facing_direction)
 
 	if has_node("/root/TransitionLayer"):
 		var transition = get_node("/root/TransitionLayer")
+		
+		# [NEW] Check if we have a stored reset position from a "Reset All" action
+		if "stored_reset_position" in transition and transition.stored_reset_position != null:
+			print("Resetting to last checkpoint position: ", transition.stored_reset_position)
+			
+			# Apply Position
+			global_position = transition.stored_reset_position
+			_target_pos = global_position # Vital: Update target_pos so logic doesn't lerp us back
+			
+			# Apply Direction (Optional, but nice)
+			if "stored_reset_direction" in transition and transition.stored_reset_direction != null:
+				var dir = transition.stored_reset_direction
+				update_sprite_direction(dir)
+				if bomb_placer:
+					bomb_placer.update_direction(dir)
+			
+			# Clear the data so it doesn't persist forever
+			transition.stored_reset_position = null
+			transition.stored_reset_direction = null
+		
+		# [FIX] Always fade in when the level starts.
+		if transition.has_method("fade_in"):
+			transition.fade_in()
+		
 		if "should_load_game" in transition and transition.should_load_game:
 			transition.should_load_game = false
 			if history_manager:
@@ -85,9 +110,26 @@ func on_level_entered() -> void:
 		has_pending_level_entry = true
 		return
 
+	# [NEW] Check if we are on floating ground (Layer 32)
+	# This prevents saving if standing on a temporary bridge/bomb
+	if _is_on_floating_ground():
+		print("Level entered on floating object - Checkpoint skipped.")
+		return
+
 	# Normal movement (safe): Save checkpoint immediately.
 	if history_manager:
 		history_manager.save_checkpoint()
+
+func _is_on_floating_ground() -> bool:
+	var space_state = get_world_2d().direct_space_state
+	var query = PhysicsPointQueryParameters2D.new()
+	query.position = global_position
+	query.collide_with_bodies = true
+	# Layer 32 is used for floating boxes in box.gd
+	query.collision_mask = 32 
+	
+	var results = space_state.intersect_point(query)
+	return results.size() > 0
 
 func reset_level() -> void:
 	if history_manager:
@@ -200,7 +242,7 @@ func trigger_explosion_sequence() -> void:
 	bomb_placer.actual_explode_logic()
 
 # ------------------------------------------------------------------------------
-# KNOCKBACK LOGIC (Updated to Prevent Bad Checkpoints)
+# KNOCKBACK LOGIC
 # ------------------------------------------------------------------------------
 func apply_knockback(direction: Vector2, distance: int) -> void:
 	if is_moving: return
@@ -237,7 +279,6 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 				continue
 			
 			# If we hit a Box or a Wall (Node), we stop.
-			# We assume Walls are StaticBody2D nodes in group "wall" (from wall.gd)
 			hit_real_solid = true
 			break
 		
@@ -256,22 +297,16 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 	# 2. Animation Logic
 	if hit_obstacle:
 		# CRASH: Hard stop!
-		# We scale the duration so you hit the wall at full speed, 
-		# rather than floating slowly to it.
 		var ratio = float(valid_distance) / float(distance) if distance > 0 else 0.0
-		# Clamp min duration to 0.05s to prevent instant teleporting
 		var crash_duration = max(0.05, 0.4 * ratio)
 		
-		# TRIGGER JELLY ANIMATION (Crash speed)
 		_animate_jelly(crash_duration)
 		
-		# Linear means constant velocity -> abrupt stop
 		movement_tween.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
 		movement_tween.tween_property(self, "position", target_pos, crash_duration)
 		
 	else:
-		# FRICTION: Smooth slow down (Air resistance)
-		# TRIGGER JELLY ANIMATION (Full duration)
+		# FRICTION: Smooth slow down
 		_animate_jelly(0.4)
 		
 		movement_tween.set_trans(Tween.TRANS_EXPO).set_ease(Tween.EASE_OUT)
@@ -303,7 +338,8 @@ func apply_knockback(direction: Vector2, distance: int) -> void:
 			is_knockback_active = false
 			if has_pending_level_entry:
 				has_pending_level_entry = false
-				if history_manager:
+				# [NEW] Also check here so we don't save if knockback lands us on a bomb
+				if history_manager and not _is_on_floating_ground():
 					history_manager.save_checkpoint()
 	)
 
@@ -333,7 +369,6 @@ func _animate_jelly(duration: float) -> void:
 	var t = create_tween()
 	
 	# 1. Stretch (Start of move)
-	# Multiply against default_scale to preserve editor scaling
 	t.tween_property(visual_target, "scale", default_scale * Vector2(0.8, 1.2), duration * 0.3)\
 		.set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	
@@ -351,7 +386,6 @@ func _animate_jelly(duration: float) -> void:
 func record_data() -> Dictionary:
 	return {
 		"position": _target_pos if is_moving else position,
-		# NEW: Save the vector direction instead of rotation
 		"facing_dir_x": current_facing_direction.x,
 		"facing_dir_y": current_facing_direction.y
 	}
@@ -380,7 +414,6 @@ func restore_data(data: Dictionary) -> void:
 	_target_pos = data.position
 	
 	# Only run this check if we are NOT currently dying.
-	# This prevents the checkpoint load (which calls restore_data) from killing us again.
 	if not is_dead:
 		var space_state = get_world_2d().direct_space_state
 		var query = PhysicsPointQueryParameters2D.new()
@@ -394,6 +427,47 @@ func restore_data(data: Dictionary) -> void:
 			if collider.is_in_group("wall"):
 				print("Player reverted into a wall!")
 				die()
+
+# Special Reset Function (Reloads Scene instead of Checkpoint)
+func restart_level_with_transition() -> void:
+	if is_dead: return
+	is_dead = true
+
+	# 1. Visual FX (Shake)
+	var camera = get_viewport().get_camera_2d()
+	if camera and camera.has_method("shake_screen"):
+		camera.shake_screen(0.6) 
+	
+	# 2. Disable Input and Physics
+	set_process_unhandled_input(false)
+	set_physics_process(false)
+	is_moving = false
+	if movement_tween: 
+		movement_tween.kill()
+	
+	# 3. Hide Player Visuals
+	if sprite:
+		sprite.visible = false
+	
+	# 4. Spawn Death Particles
+	if death_effect_scene:
+		var effect = death_effect_scene.instantiate()
+		effect.global_position = global_position
+		get_parent().add_child(effect)
+	
+	# 5. Wait a moment
+	await get_tree().create_timer(0.3).timeout
+	
+	# 6. Transition Out
+	if has_node("/root/TransitionLayer"):
+		await get_node("/root/TransitionLayer").fade_out(0.4)
+		# Ensure we DO NOT load the game on the next start
+		get_node("/root/TransitionLayer").should_load_game = false
+	else:
+		await get_tree().create_timer(0.4).timeout
+	
+	# 7. Reload the Scene (Full Reset)
+	get_tree().reload_current_scene()
 
 func die() -> void:
 	if is_dead: return
@@ -430,9 +504,8 @@ func die() -> void:
 		await get_tree().create_timer(0.4).timeout
 	
 	# 6. Load Checkpoint (Respawn Logic)
-	# This will call restore_data(), but our is_dead flag will prevent a second death.
 	if history_manager:
-		history_manager.load_checkpoint()
+		history_manager.undo_last_action()
 	
 	# 7. Restore Player State
 	if sprite:
@@ -441,7 +514,7 @@ func die() -> void:
 		
 	set_process_unhandled_input(true)
 	set_physics_process(true)
-	is_dead = false # [NEW] Reset death state so we can die again later
+	is_dead = false 
 	
 	# 8. Transition In
 	if has_node("/root/TransitionLayer"):
