@@ -24,6 +24,16 @@ func _ready() -> void:
 	add_to_group("revertable")
 	_initial_layer = collision_layer
 	_initial_mask = collision_mask
+	
+	# [FIX] Make material unique to this instance so we don't affect other boxes/bombs
+	if material is ShaderMaterial:
+		material = material.duplicate()
+	
+	var sprite = find_child("*Sprite*", true, false)
+	if sprite and sprite.material is ShaderMaterial:
+		sprite.material = sprite.material.duplicate()
+	
+	_set_outline_enabled(true)
 
 func check_on_water() -> void:
 	var space_state = get_world_2d().direct_space_state
@@ -44,6 +54,7 @@ func become_bridge(water_collider: Node) -> void:
 	
 	modulate = Color(0.7, 0.7, 0.8) 
 	remove_from_group("box")
+	_set_outline_enabled(false)
 	
 	# Move to Layer 6 (Bit 32) so Player walks over it, but Bomb detects it
 	collision_layer = 32
@@ -90,6 +101,7 @@ func restore_water() -> void:
 	
 	modulate = Color.WHITE
 	add_to_group("box")
+	_set_outline_enabled(true)
 	collision_layer = _initial_layer
 	collision_mask = _initial_mask
 
@@ -173,11 +185,15 @@ func restore_snapshot(data: Dictionary) -> void:
 	# Apply saved state regardless of previous state
 	if data.is_floating:
 		become_bridge_from_data(data.water_data)
+		_set_outline_enabled(false) 
+	else:
+		_set_outline_enabled(true) 
 
 func become_bridge_from_data(w_data: Dictionary) -> void:
 	is_floating = true
 	modulate = Color(0.7, 0.7, 0.8)
 	remove_from_group("box")
+	_set_outline_enabled(false)
 	collision_layer = 32
 	collision_mask = 0
 	
@@ -212,3 +228,13 @@ func restore_data(data: Dictionary) -> void:
 	# Properly kill the specific tween
 	if move_tween:
 		move_tween.kill()
+func _set_outline_enabled(is_enabled: bool) -> void:
+	# 1. Check if material is on the Box node itself
+	if material is ShaderMaterial:
+		material.set_shader_parameter("enabled", is_enabled)
+	
+	# 2. Check for visual children (Sprite2D or AnimatedSprite2D)
+	# This handles cases where the shader is applied to the visual component
+	var sprite = find_child("*Sprite*", true, false)
+	if sprite and sprite.get("material") is ShaderMaterial:
+		sprite.material.set_shader_parameter("enabled", is_enabled)
