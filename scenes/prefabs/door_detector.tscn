@@ -7,6 +7,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_t58y6"]
 shader = ExtResource("2_4xuud")
+shader_parameter/enabled = true
 shader_parameter/line_color = Color(1, 1, 1, 0.5)
 shader_parameter/line_thickness = 1.0
 
@@ -32,3 +33,5 @@ shape = SubResource("RectangleShape2D_hnj8j")
 
 [node name="LightOccluder2D" type="LightOccluder2D" parent="."]
 occluder = SubResource("OccluderPolygon2D_lbsto")
+
+[node name="VisibleOnScreenEnabler2D" type="VisibleOnScreenEnabler2D" parent="."]

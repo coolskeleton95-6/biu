@@ -26,7 +26,7 @@ glow_bloom = 0.3
 [node name="biu_world" parent="." instance=ExtResource("1_8cg7g")]
 
 [node name="Player" parent="." instance=ExtResource("2_syyn5")]
-position = Vector2(1112, 1048)
+position = Vector2(360, 680)
 
 [node name="Camera2D" type="Camera2D" parent="." node_paths=PackedStringArray("player", "levels_parent")]
 position = Vector2(144, 80)

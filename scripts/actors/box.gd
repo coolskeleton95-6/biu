@@ -34,6 +34,13 @@ func _ready() -> void:
 		sprite.material = sprite.material.duplicate()
 	
 	_set_outline_enabled(true)
+	
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	
+	# Ensure we are still valid after the wait
+	if is_inside_tree():
+		check_on_water()
 
 func check_on_water() -> void:
 	var space_state = get_world_2d().direct_space_state
@@ -228,6 +235,7 @@ func restore_data(data: Dictionary) -> void:
 	# Properly kill the specific tween
 	if move_tween:
 		move_tween.kill()
+
 func _set_outline_enabled(is_enabled: bool) -> void:
 	# 1. Check if material is on the Box node itself
 	if material is ShaderMaterial:
